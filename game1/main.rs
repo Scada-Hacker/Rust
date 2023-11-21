@@ -3,6 +3,7 @@ extern crate rand;
 
 use piston_window::*;
 use rand::Rng;
+use std::time::{Duration, Instant};
 
 const WINDOW_SIZE: [u32; 2] = [800, 600];
 const PLAYER_RADIUS: f64 = 20.0;
@@ -11,13 +12,18 @@ const NUM_ENEMIES: usize = 5;
 const NUM_OBSTACLES: usize = 10;
 const OBSTACLE_SIZE: f64 = 30.0;
 const BULLET_RADIUS: f64 = 5.0;
+const BULLET_SPEED: f64 = 5.0;
+const MAX_BULLETS: usize = 4;
+const BULLET_DELAY: Duration = Duration::from_millis(500); // 500 milliseconds delay between bullets
 
 struct Player {
     x: f64,
     y: f64,
     velocity: [f64; 2],
-    shooting_direction: Option<[f64; 2]>,
-    last_direction: [f64; 2],
+    shooting_direction: [f64; 2],
+    last_shot_time: Option<Instant>,
+    is_shooting: bool,
+    active_bullets: usize,
 }
 
 struct Bullet {
@@ -43,32 +49,44 @@ impl Player {
             x: WINDOW_SIZE[0] as f64 / 2.0,
             y: WINDOW_SIZE[1] as f64 / 2.0,
             velocity: [0.0, 0.0],
-            shooting_direction: None,
-            last_direction: [0.0, 0.0],
+            shooting_direction: [1.0, 0.0], // Initial shooting direction
+            last_shot_time: None,
+            is_shooting: false,
+            active_bullets: 0,
+        }
+    }
+
+    fn can_shoot(&self) -> bool {
+        match self.last_shot_time {
+            Some(time) => time.elapsed() >= BULLET_DELAY && self.active_bullets < MAX_BULLETS,
+            None => true,
+        }
+    }
+
+    fn shoot(&mut self) -> Option<Bullet> {
+        if self.can_shoot() && self.is_shooting {
+            self.last_shot_time = Some(Instant::now());
+            self.active_bullets += 1;
+            Some(Bullet {
+                x: self.x,
+                y: self.y,
+                velocity: self.shooting_direction, // Set the bullet's velocity
+            })
+        } else {
+            None
         }
     }
 
     fn update(&mut self) {
         self.x += self.velocity[0];
         self.y += self.velocity[1];
-        if self.velocity != [0.0, 0.0] {
-            self.last_direction = self.velocity;
-        }
-    }
-
-    fn shoot(&mut self, direction: [f64; 2]) -> Bullet {
-        Bullet {
-            x: self.x,
-            y: self.y,
-            velocity: direction,
-        }
     }
 }
 
 impl Bullet {
     fn update(&mut self) {
-        self.x += self.velocity[0];
-        self.y += self.velocity[1];
+        self.x += self.velocity[0] * BULLET_SPEED;
+        self.y += self.velocity[1] * BULLET_SPEED;
     }
 
     fn is_outside_window(&self) -> bool {
@@ -111,14 +129,14 @@ impl Obstacle {
 }
 
 fn main() {
-    let mut window: PistonWindow = WindowSettings::new("Homing Enemies", WINDOW_SIZE)
+    let mut window: PistonWindow = WindowSettings::new("Arrow Keys to Change Bullet Direction", WINDOW_SIZE)
         .exit_on_esc(true)
         .build()
         .unwrap();
 
     let mut player = Player::new();
     let mut enemies: Vec<Enemy> = (0..NUM_ENEMIES).map(|_| Enemy::new()).collect();
-    let mut obstacles: Vec<Obstacle> = (0..NUM_OBSTACLES).map(|_| Obstacle::new()).collect();
+    let obstacles: Vec<Obstacle> = (0..NUM_OBSTACLES).map(|_| Obstacle::new()).collect();
     let mut bullets: Vec<Bullet> = Vec::new();
 
     while let Some(event) = window.next() {
@@ -189,10 +207,16 @@ fn main() {
                 bullets[i].update();
                 if bullets[i].is_outside_window() {
                     to_remove.push(i);
+                    player.active_bullets -= 1;
                 }
             }
             for &index in to_remove.iter().rev() {
                 bullets.remove(index);
+            }
+
+            // Shoot bullets while spacebar is held down
+            if let Some(bullet) = player.shoot() {
+                bullets.push(bullet);
             }
         }
 
@@ -203,18 +227,12 @@ fn main() {
                 Key::A => player.velocity[0] = -5.0,
                 Key::D => player.velocity[0] = 5.0,
                 Key::Space => {
-                    // Shoot in the current direction
-                    if player.velocity != [0.0, 0.0] {
-                        player.shooting_direction = Some(player.velocity);
-                        let bullet = player.shoot(player.velocity);
-                        bullets.push(bullet);
-                    } else {
-                        // Shoot in the last direction
-                        player.shooting_direction = Some(player.last_direction);
-                        let bullet = player.shoot(player.last_direction);
-                        bullets.push(bullet);
-                    }
+                    player.is_shooting = true; // Start shooting when spacebar is held down
                 }
+                Key::Up => player.shooting_direction = [0.0, -1.0],
+                Key::Down => player.shooting_direction = [0.0, 1.0],
+                Key::Left => player.shooting_direction = [-1.0, 0.0],
+                Key::Right => player.shooting_direction = [1.0, 0.0],
                 _ => {}
             }
         }
@@ -224,8 +242,7 @@ fn main() {
                 Key::W | Key::S => player.velocity[1] = 0.0,
                 Key::A | Key::D => player.velocity[0] = 0.0,
                 Key::Space => {
-                    // Stop shooting
-                    player.shooting_direction = None;
+                    player.is_shooting = false; // Stop shooting when spacebar is released
                 }
                 _ => {}
             }
