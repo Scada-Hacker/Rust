@@ -199,6 +199,12 @@ fn main() {
             // Update enemies
             for enemy in &mut enemies {
                 enemy.update(&player);
+
+                for obstacle in &obstacles {
+                if obstacle.collides_with(player.x, player.y, PLAYER_RADIUS) {
+                    // Handle player collision with obstacle (e.g., stop movement)
+                    player.velocity = [0.0, 0.0];
+                }
             }
 
             // Update bullets
