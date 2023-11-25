@@ -208,7 +208,7 @@ fn main() {
                 // check collision between enemies so they dont meld into one blob
                 if enemies.collides_with_enemy(enemies.x, enemies.y, ENEMY_RADIUS) {
                     // Handle player collision with obstacle (e.g., stop movement)
-                    enemy.velocity = [0.0, 0.0];
+                    enemy.speed = [0.0, 0.0];
                 }
             }
 
