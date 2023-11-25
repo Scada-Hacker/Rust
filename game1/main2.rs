@@ -206,7 +206,7 @@ fn main() {
             for enemy in &mut enemies {
                 enemy.update(&player);
                 // check collision between enemies so they dont meld into one blob
-                if enemy.collides_with_enemy(enemies.x, enemies.y, ENEMY_RADIUS) {
+                if enemy.collides_with_enemy(enemy.x, enemy.y, ENEMY_RADIUS) {
                     // Handle player collision with obstacle (e.g., stop movement)
                     enemy.speed = [0.0, 0.0];
                 }
