@@ -109,12 +109,6 @@ impl Enemy {
         self.x += angle.cos() * self.speed;
         self.y += angle.sin() * self.speed;
     }
-    fn collides_with_enemy(&self, x: f64, y: f64, radius: f64) -> bool {
-        x + radius > self.x
-            && x - radius < self.x + ENEMY_RADIUS    
-            && y + radius > self.y
-            && y - radius < self.y + ENEMY_RADIUS
-    }
 }
 
 impl Obstacle {
@@ -205,11 +199,6 @@ fn main() {
             // Update enemies
             for enemy in &mut enemies {
                 enemy.update(&player);
-                // check collision between enemies so they dont meld into one blob
-                if enemy.collides_with_enemy(enemy.x, enemy.y, ENEMY_RADIUS) {
-                    // Handle player collision with obstacle (e.g., stop movement)
-                    enemy.speed = [0.0];
-                }
             }
 
             // Update bullets
