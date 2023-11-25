@@ -111,9 +111,9 @@ impl Enemy {
     }
     fn collides_with_enemy(&self, x: f64, y: f64, radius: f64) -> bool {
         x + radius > self.x
-            && x - radius < self.x + OBSTACLE_SIZE
+            && x - radius < self.x + ENEMY_SIZE
             && y + radius > self.y
-            && y - radius < self.y + OBSTACLE_SIZE
+            && y - radius < self.y + ENEMY_SIZE
     }
 }
 
