@@ -43,6 +43,13 @@ struct Obstacle {
     y: f64,
 }
 
+// Add a helper function to check for collisions between two circles
+fn circles_collide(x1: f64, y1: f64, r1: f64, x2: f64, y2: f64, r2: f64) -> bool {
+    let distance_squared = (x1 - x2).powi(2) + (y1 - y2).powi(2);
+    let sum_of_radii_squared = (r1 + r2).powi(2);
+    distance_squared <= sum_of_radii_squared
+}
+
 impl Player {
     fn new() -> Self {
         Player {
@@ -142,7 +149,37 @@ fn main() {
     while let Some(event) = window.next() {
         if let Some(_) = event.render_args() {
             window.draw_2d(&event, |c, g, _| {
-                clear([1.0; 4], g);
+                clear([0.0, 0.0, 0.0, 1.0], g);
+                
+                 // Draw red border lines
+                line(
+                    [1.0, 0.0, 0.0, 1.0], // RGBA color (red)
+                    1.0, // Line width
+                    [0.0, 0.0, 0.0, WINDOW_SIZE[1] as f64], // Left border
+                    c.transform,
+                    g,
+                );
+                line(
+                    [1.0, 0.0, 0.0, 1.0],
+                    1.0,
+                    [0.0, WINDOW_SIZE[1] as f64, WINDOW_SIZE[0] as f64, WINDOW_SIZE[1] as f64], // Bottom border
+                    c.transform,
+                    g,
+                );
+                line(
+                    [1.0, 0.0, 0.0, 1.0],
+                    1.0,
+                    [WINDOW_SIZE[0] as f64, WINDOW_SIZE[1] as f64, WINDOW_SIZE[0] as f64, 0.0], // Right border
+                    c.transform,
+                    g,
+                );
+                line(
+                    [1.0, 0.0, 0.0, 1.0],
+                    1.0,
+                    [WINDOW_SIZE[0] as f64, 0.0, 0.0, 0.0], // Top border
+                    c.transform,
+                    g,
+                );
 
                 // Draw player
                 ellipse(
@@ -202,16 +239,42 @@ fn main() {
             }
 
             // Update bullets
-            let mut to_remove = Vec::new();
+            let mut to_remove_bullets = Vec::new();
+            let mut to_remove_enemies = Vec::new();
+
             for i in 0..bullets.len() {
                 bullets[i].update();
                 if bullets[i].is_outside_window() {
-                    to_remove.push(i);
+                    to_remove_bullets.push(i);
                     player.active_bullets -= 1;
+                } else {
+                    // Check for collisions with enemies
+                    for j in 0..enemies.len() {
+                        if circles_collide(
+                            bullets[i].x,
+                            bullets[i].y,
+                            BULLET_RADIUS,
+                            enemies[j].x,
+                            enemies[j].y,
+                            ENEMY_RADIUS,
+                        ) {
+                            // Remove both the bullet and the enemy on collision
+                            to_remove_bullets.push(i);
+                            to_remove_enemies.push(j);
+                            player.active_bullets -= 1;
+                        }
+                    }
                 }
             }
-            for &index in to_remove.iter().rev() {
+
+            // Remove bullets that are outside the window or collided with enemies
+            for &index in to_remove_bullets.iter().rev() {
                 bullets.remove(index);
+            }
+
+            // Remove enemies that collided with bullets
+            for &index in to_remove_enemies.iter().rev() {
+                enemies.remove(index);
             }
 
             // Shoot bullets while spacebar is held down
